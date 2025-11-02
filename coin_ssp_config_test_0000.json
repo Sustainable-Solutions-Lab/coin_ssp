@@ -1,9 +1,10 @@
 {
   "run_metadata": {
-    "json_id": "test",
-    "run_name": "CanESM5-test",
-    "description": "Run at 5%, 10%, 20%, and 40% linear damage through three pathways: output, capital, and TFP. Using CanESM5 climate data.",
-    "created_date": "2025-09-30"
+    "json_id": "ref_0000",
+    "run_name": "CanESM5_ssp245_reference",
+    "description": "each impact at 1/6 scale to get scaling for combined impact",
+    "created_date": "2025-11-01",
+    "reorganized_from": "coin_ssp_integrated_config_0001.json"
   },
 
   "_comment_processing_order": "Configuration sections organized by processing step order in main.py",
@@ -17,7 +18,7 @@
       "pr_file_prefix": "CLIMATE",
       "gdp_file_prefix": "GDP",
       "pop_file_prefix": "POP",
-      "target_responses_file_prefix": "target_gdp_amounts"
+      "target_reductions_file_prefix": "target_gdp_amounts"
     },
     "variable_names": {
       "tas_var_name": "tas",
@@ -31,21 +32,16 @@
   "ssp_scenarios": {
     "_processing_step": "Data Loading & Step Selection",
     "reference_ssp": "ssp245",
-    "forward_simulation_ssps": ["ssp245", "ssp585"],
+    "forward_simulation_ssps": ["ssp126","ssp245","ssp460","ssp370", "ssp585"],
     "description": "Reference SSP used for scaling factor calibration, forward simulation SSPs for TFP and projections"
   },
 
   "time_periods": {
-    "_processing_step": "Step 3 - Target GDP Changes",
+    "_processing_step": "Step 1 - Target GDP Changes",
     "reference_period": {
       "start_year": 1861,
       "end_year": 1910,
       "description": "Zero-climate change reference period for calculation of tas0 and pr0"
-    },
-    "historical_period": {
-      "start_year": 1861,
-      "end_year": 2014,
-      "description": "Historical period for gdp-weighting in variability relationship calibration"
     },
     "target_period": {
       "start_year": 2080,
@@ -54,59 +50,35 @@
     },
     "prediction_period": {
       "start_year": 2015,
-      "end_year": 2100,
       "description": "Year before which population and GDP is assumed to grow exponentially"
     }
   },
 
-   "gdp_targets": [
+  "gdp_targets": [
       {
-        "target_name": "damage_const_10%",
-        "target_type": "damage",
+        "target_name": "const_10%",
         "target_shape": "constant",
-        "global_mean_amount": -0.10,
-        "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"
+        "target_type": "damage",
+        "gdp_amount": -0.016666666666667,
+        "description": "Uniform 10% GDP reduction across all grid cells"
       },
       {
-        "target_name": "damage_lin_10%_20%@30C",
-        "target_type": "damage",
+        "target_name": "lin_10%_20%@30C",
         "target_shape": "linear",
-        "global_mean_amount": -0.10,
-        "zero_amount_temperature": 30.0,
-        "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"
-      },
-      {
-        "target_name": "damage_quad_10%_0%@0.5%/C",
         "target_type": "damage",
-        "target_shape": "quadratic",
-        "global_mean_amount": -0.10,
-        "zero_derivative_temperature": -0.005,
-        "zero_amount_temperature": 13.5,
-        "description": "Quadratic temperature-dependent reduction, -10% GDP-weighted global mean, 0% at 13.5°C, -0.5%/°C at 0% zero-reduction temperature"
+        "global_mean_amount": -0.016666666666667,
+        "reference_temperature": 30.0,
+        "amount_at_reference_temp": -0.025,
+        "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"
       },
       {
-        "target_name": "var_const_1%",
+        "target_name": "quad_10%_0%@13.5C_20%@22C",
+        "target_shape": "quadratic",
         "target_type": "damage",
-        "target_shape": "constant",
-        "global_mean_amount": -0.01,
-        "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"
-      },
-      {
-        "target_name": "var_lin_1%_2%@30C",
-        "target_type": "variability",
-        "target_shape": "linear",
-        "global_mean_amount": -0.01,
-        "zero_amount_temperature": 30.0,
-        "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"
-      },
-      {
-        "target_name": "var_quad_1%_0%@13.5C_0.05%/C",
-        "target_type": "variability",
-        "target_shape": "quadratic",
-        "global_mean_amount": -0.01,
-        "zero_derivative_temperature": -0.0005,
+        "global_mean_amount": -0.016666666666667,
+        "derivative_at_zero_amount_temperature": -0.0025,
         "zero_amount_temperature": 13.5,
-        "description": "Quadratic temperature-dependent reduction, -10% GDP-weighted global mean, 0% at 13.5°C, -0.5%/°C at 0% zero-reduction temperature"
+        "description": "Quadratic temperature-dependent reduction, -20% at 22°C, -10% GDP-weighted global mean, 0% at 13.5°C"
       }
   ],
 
@@ -116,8 +88,8 @@
     "s": 0.3,
     "alpha": 0.3,
     "delta": 0.1,
-    "tas0": 0.0,
-    "pr0": 0.0,
+    "tas0": 20.0,
+    "pr0": 1.0,
     "k_tas1": 0.0,
     "k_tas2": 0.0,
     "k_pr1": 0.0,
@@ -132,42 +104,47 @@
     "y_pr2": 0.0
   },
 
-  "response_function_scalings": [
+   "response_function_scalings": [
       {
         "scaling_name": "output_linear",
         "description": "Linear temperature sensitivity for output",
         "y_tas1": 1.0
       },
       {
+        "scaling_name": "output_quadratic",
+        "description": "Quadratic temperature sensitivity for output",
+        "y_tas2": 1.0
+      },
+      {
         "scaling_name": "capital_linear",
         "description": "Linear temperature sensitivity for capital stock",
         "k_tas1": 1.0
       },
-    {
+      {
+        "scaling_name": "capital_quadratic",
+        "description": "Quadratic temperature sensitivity for capital stock",
+        "k_tas2": 1.0
+      },
+      {
         "scaling_name": "tfp_linear",
         "description": "Linear temperature sensitivity for TFP",
         "tfp_tas1": 1.0
       },
-            {
-        "scaling_name": "y+k_linear",
-        "description": "Linear temperature sensitivity for y+k",
-        "y_tas1": 1.0,
-        "k_tas1": 1.0
+      {
+        "scaling_name": "tfp_quadratic",
+        "description": "Quadratic temperature sensitivity for TFP",
+        "tfp_tas2": 1.0
       },
       {
-        "scaling_name": "y+tfp_linear",
-        "description": "Linear temperature sensitivity for y+tfp",
-        "y_tas1": 1.0,
-        "tfp_tas1": 1.0
-      },
-    {
-        "scaling_name": "y+k+tfp_linear",
-        "description": "Linear temperature sensitivity for y+k+tfp",
-        "y_tas1": 1.0,
-        "k_tas1": 1.0,
-        "tfp_tas1": 1.0
+        "scaling_name": "combined_balanced_quadratic-based",
+        "description": "1/6 by each pathway based on single factor quadratic target scaled to average 1/6 each",
+        "y_tas1": 0.375592,
+        "y_tas2": 0.187745,
+        "k_tas1": 0.281885,
+        "k_tas2": 0.129026,
+        "tfp_tas1": 0.0163124,
+        "tfp_tas2": 0.00943036
       }
-
   ],
 
   "processing_options": {
@@ -194,7 +171,7 @@
     "_processing_step": "Step 5 - Output Generation",
     "output_directory": "data/output",
     "filename_patterns": {
-      "target_responses": "{model_name}_{reference_ssp}_target_responses_{timestamp}.nc",
+      "target_reductions": "{model_name}_{reference_ssp}_target_reductions_{timestamp}.nc",
       "forward_results": "{model_name}_{ssp}_{scaling_name}_results_{timestamp}.nc",
       "maps": "{model_name}_{reference_ssp}_maps_{timestamp}.pdf",
       "diagnostics": "{model_name}_{reference_ssp}_diagnostics_{timestamp}.pdf"
