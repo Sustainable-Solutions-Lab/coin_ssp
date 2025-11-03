@@ -48,6 +48,7 @@ venv.bak/
 *.csv
 *.h5
 *.hdf5
+*.tar
 
 # Allow input NetCDF files in data/input/
 *.nc

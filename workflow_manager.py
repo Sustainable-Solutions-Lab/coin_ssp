@@ -21,6 +21,7 @@ Usage examples:
 import argparse
 import json
 import logging
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -47,12 +48,13 @@ class WorkflowManager:
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.verbose = verbose
 
-    def run_stage1(self, stage1_config: Path, model_name: str = None, json_id: str = None) -> Path:
+    def run_stage1(self, stage1_config: Path, template_config: Path = None, model_name: str = None, json_id: str = None) -> Path:
         """
         Run Stage 1: Individual response function assessments.
 
         Args:
             stage1_config: Path to initial configuration file
+            template_config: Path to template configuration file (will be copied to output)
             model_name: Climate model name (extracted from config if not provided)
             json_id: JSON ID (extracted from config if not provided)
 
@@ -96,6 +98,16 @@ class WorkflowManager:
                 logger.debug(f"Stage 1 stdout: {result.stdout}")
 
             logger.info("Stage 1 completed successfully")
+
+            # Copy configuration files to output directory for documentation
+            logger.info("Copying configuration files to output directory")
+            shutil.copy2(stage1_config, output_dir / stage1_config.name)
+            logger.info(f"  Copied {stage1_config.name}")
+
+            if template_config and template_config.exists():
+                shutil.copy2(template_config, output_dir / template_config.name)
+                logger.info(f"  Copied {template_config.name}")
+
             return output_dir
 
         except subprocess.CalledProcessError as e:
@@ -228,6 +240,12 @@ class WorkflowManager:
                 logger.debug(f"Stage 3 stdout: {result.stdout}")
 
             logger.info("Stage 3 completed successfully")
+
+            # Copy configuration file to output directory for documentation
+            logger.info("Copying configuration file to output directory")
+            shutil.copy2(stage2_config, output_dir / stage2_config.name)
+            logger.info(f"  Copied {stage2_config.name}")
+
             return output_dir
 
         except subprocess.CalledProcessError as e:
@@ -253,7 +271,7 @@ class WorkflowManager:
         results = {}
 
         # Stage 1: Individual assessments
-        stage1_output = self.run_stage1(stage1_config)
+        stage1_output = self.run_stage1(stage1_config, template_config)
         results['stage1_output'] = stage1_output
 
         # Stage 2: Config generation from Stage 1 results
