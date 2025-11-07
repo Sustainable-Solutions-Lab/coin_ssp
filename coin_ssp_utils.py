@@ -290,38 +290,38 @@ def load_gridded_data(config, case_name):
 
     # Apply exponential growth modification for GDP and population before prediction year
     common_years = tas_aligned.time.values
-    if prediction_year in common_years:
-        idx_prediction_year = np.where(common_years == prediction_year)[0][0]
+    
+    idx_prediction_start_year = np.where(common_years == config['time_periods']['prediction_period']['start_year'])[0][0]
 
-        if idx_prediction_year > 0:
-            print(f"  Applying exponential growth modification for years {int(common_years[0])}-{prediction_year}")
 
-            # Convert to numpy for in-place modification (xarray doesn't support this efficiently)
-            gdp_values = gdp_aligned.values
-            pop_values = pop_aligned.values
+    print(f"  Applying exponential growth modification for years {int(common_years[0])}-{prediction_year}")
 
-            # For each grid cell, modify GDP and population using exponential interpolation
-            for lat_idx in range(gdp_values.shape[1]):
-                for lon_idx in range(gdp_values.shape[2]):
-                    # GDP exponential growth
-                    gdp_first = gdp_values[0, lat_idx, lon_idx]
-                    gdp_prediction = gdp_values[idx_prediction_year, lat_idx, lon_idx]
+    # Convert to numpy for in-place modification (xarray doesn't support this efficiently)
+    gdp_values = gdp_aligned.values
+    pop_values = pop_aligned.values
 
-                    if gdp_first > 0 and gdp_prediction > 0:
-                        for idx in range(1, idx_prediction_year):
-                            gdp_values[idx, lat_idx, lon_idx] = gdp_first * (gdp_prediction / gdp_first) ** (idx / idx_prediction_year)
+    # For each grid cell, modify GDP and population using exponential interpolation
+    for lat_idx in range(gdp_values.shape[1]):
+        for lon_idx in range(gdp_values.shape[2]):
+            # GDP exponential growth
+            gdp_first = gdp_values[0, lat_idx, lon_idx]
+            gdp_prediction = gdp_values[idx_prediction_year, lat_idx, lon_idx]
 
-                    # Population exponential growth
-                    pop_first = pop_values[0, lat_idx, lon_idx]
-                    pop_prediction = pop_values[idx_prediction_year, lat_idx, lon_idx]
+            if gdp_first > 0 and gdp_prediction > 0:
+                for idx in range(0, idx_prediction_year):
+                    gdp_values[idx, lat_idx, lon_idx] = gdp_first * (gdp_prediction / gdp_first) ** (idx / idx_prediction_year)
 
-                    if pop_first > 0 and pop_prediction > 0:
-                        for idx in range(1, idx_prediction_year):
-                            pop_values[idx, lat_idx, lon_idx] = pop_first * (pop_prediction / pop_first) ** (idx / idx_prediction_year)
+            # Population exponential growth
+            pop_first = pop_values[0, lat_idx, lon_idx]
+            pop_prediction = pop_values[idx_prediction_year, lat_idx, lon_idx]
 
-            # Update DataArrays with modified values
-            gdp_aligned.values = gdp_values
-            pop_aligned.values = pop_values
+            if pop_first > 0 and pop_prediction > 0:
+                for idx in range(1, idx_prediction_year):
+                    pop_values[idx, lat_idx, lon_idx] = pop_first * (pop_prediction / pop_first) ** (idx / idx_prediction_year)
+
+    # Update DataArrays with modified values
+    gdp_aligned.values = gdp_values
+    pop_aligned.values = pop_values
 
     # Create and return Dataset
     ds = xr.Dataset({
