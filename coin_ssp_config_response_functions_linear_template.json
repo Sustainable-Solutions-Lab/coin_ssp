@@ -86,7 +86,7 @@
       },
       {
         "target_name": "var_const_1%",
-        "target_type": "damage",
+        "target_type": "variability",
         "target_shape": "constant",
         "global_mean_amount": -0.01,
         "description": "Linear temperature-dependent reduction, -20% at 30°C, -10% GDP-weighted global mean"

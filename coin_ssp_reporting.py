@@ -908,6 +908,88 @@ def print_gdp_weighted_scaling_summary(scaling_results: Dict[str, Any], config: 
                 'tfp_pr2': response_config.get('tfp_pr2', 0.0)
             }
 
+            # Get base economic parameters from config
+            model_params = config.get('model_params', {})
+            base_params = {
+                's': model_params.get('s', 0.3),
+                'alpha': model_params.get('alpha', 0.3),
+                'delta': model_params.get('delta', 0.1),
+                'tas0': model_params.get('tas0', 0.0),
+                'pr0': model_params.get('pr0', 0.0)
+            }
+
+            # Get target configuration to determine if variability target and calculate g0, g1, g2
+            target_config = next((t for t in config['gdp_targets'] if t['target_name'] == target_name), None)
+            target_type = target_config.get('target_type', 'damage') if target_config else 'damage'
+
+            # Calculate g0, g1, g2 based on target type
+            if target_type == 'variability' and target_config:
+                target_shape = target_config.get('target_shape', 'constant')
+
+                if target_shape == 'constant':
+                    g0 = target_config.get('global_mean_amount', 1.0)
+                    g1 = 0.0
+                    g2 = 0.0
+
+                elif target_shape == 'linear':
+                    global_mean_amount = target_config.get('global_mean_amount', 1.0)
+                    zero_amount_temperature = target_config.get('zero_amount_temperature', 0.0)
+
+                    # Calculate GDP-weighted mean temperature using historical period GDP
+                    tas0_2d = all_data.get('tas0_2d')
+                    if tas0_2d is not None:
+                        tas0_2d_values = tas0_2d.values if hasattr(tas0_2d, 'values') else tas0_2d
+                        valid_mask_values = valid_mask.values if hasattr(valid_mask, 'values') else valid_mask
+                        gdp_hist_values = gdp_hist_period.values if hasattr(gdp_hist_period, 'values') else gdp_hist_period
+
+                        total_gdp = np.sum(gdp_hist_values[valid_mask_values])
+                        gdp_weighted_tas = np.sum(gdp_hist_values[valid_mask_values] * tas0_2d_values[valid_mask_values]) / total_gdp
+
+                        g1 = global_mean_amount / (gdp_weighted_tas - zero_amount_temperature)
+                        g0 = -g1 * zero_amount_temperature
+                        g2 = 0.0
+                    else:
+                        g0, g1, g2 = 1.0, 0.0, 0.0
+
+                elif target_shape == 'quadratic':
+                    global_mean_amount = target_config.get('global_mean_amount', 1.0)
+                    zero_amount_temperature = target_config.get('zero_amount_temperature', 0.0)
+                    zero_derivative_temperature = target_config.get('zero_derivative_temperature', 0.0)
+
+                    # Calculate GDP-weighted mean temperature and T^2 using historical period GDP
+                    tas0_2d = all_data.get('tas0_2d')
+                    if tas0_2d is not None:
+                        tas0_2d_values = tas0_2d.values if hasattr(tas0_2d, 'values') else tas0_2d
+                        valid_mask_values = valid_mask.values if hasattr(valid_mask, 'values') else valid_mask
+                        gdp_hist_values = gdp_hist_period.values if hasattr(gdp_hist_period, 'values') else gdp_hist_period
+
+                        total_gdp = np.sum(gdp_hist_values[valid_mask_values])
+                        gdp_weighted_tas = np.sum(gdp_hist_values[valid_mask_values] * tas0_2d_values[valid_mask_values]) / total_gdp
+                        gdp_weighted_tas2 = np.sum(gdp_hist_values[valid_mask_values] * tas0_2d_values[valid_mask_values]**2) / total_gdp
+
+                        T0 = zero_amount_temperature
+                        T_mean = gdp_weighted_tas
+                        T2_mean = gdp_weighted_tas2
+
+                        # Solve the system
+                        det = (T_mean - T0) * 2 * T0 - (T2_mean - T0**2) * 1
+                        g1 = (global_mean_amount * 2 * T0 - zero_derivative_temperature * (T2_mean - T0**2)) / det
+                        g2 = (zero_derivative_temperature * (T_mean - T0) - global_mean_amount * 1) / det
+                        g0 = -g1 * T0 - g2 * T0**2
+                    else:
+                        g0, g1, g2 = 1.0, 0.0, 0.0
+                else:
+                    g0, g1, g2 = 1.0, 0.0, 0.0
+            else:
+                # For damage targets, use default values
+                g0, g1, g2 = 1.0, 0.0, 0.0
+
+            variability_params = {
+                'g0': g0,
+                'g1': g1,
+                'g2': g2
+            }
+
             # Collect data for CSV
             csv_row = {
                 'target_name': target_name,
@@ -922,7 +1004,13 @@ def print_gdp_weighted_scaling_summary(scaling_results: Dict[str, Any], config: 
                 'obj_func_min': obj_func_min
             }
 
-            # Add the 12 scaling parameters
+            # Add the base economic parameters
+            csv_row.update(base_params)
+
+            # Add the GDP variability scaling parameters
+            csv_row.update(variability_params)
+
+            # Add the 12 climate response scaling parameters
             csv_row.update(scaling_params)
 
             # Add regression slope statistics if available

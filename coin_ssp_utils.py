@@ -291,7 +291,8 @@ def load_gridded_data(config, case_name):
     # Apply exponential growth modification for GDP and population before prediction year
     common_years = tas_aligned.time.values
     
-    idx_prediction_start_year = np.where(common_years == config['time_periods']['prediction_period']['start_year'])[0][0]
+    # Note: by going to historical end year, the historical gdp and pop is the same regardless of which ssp we are using
+    idx_historical_end_year = np.where(common_years == config['time_periods']['historical_end_period']['end_year'])[0][0]
 
 
     print(f"  Applying exponential growth modification for years {int(common_years[0])}-{prediction_year}")
@@ -303,21 +304,19 @@ def load_gridded_data(config, case_name):
     # For each grid cell, modify GDP and population using exponential interpolation
     for lat_idx in range(gdp_values.shape[1]):
         for lon_idx in range(gdp_values.shape[2]):
+
             # GDP exponential growth
             gdp_first = gdp_values[0, lat_idx, lon_idx]
             gdp_prediction = gdp_values[idx_prediction_year, lat_idx, lon_idx]
-
-            if gdp_first > 0 and gdp_prediction > 0:
-                for idx in range(0, idx_prediction_year):
-                    gdp_values[idx, lat_idx, lon_idx] = gdp_first * (gdp_prediction / gdp_first) ** (idx / idx_prediction_year)
 
             # Population exponential growth
             pop_first = pop_values[0, lat_idx, lon_idx]
             pop_prediction = pop_values[idx_prediction_year, lat_idx, lon_idx]
 
-            if pop_first > 0 and pop_prediction > 0:
-                for idx in range(1, idx_prediction_year):
-                    pop_values[idx, lat_idx, lon_idx] = pop_first * (pop_prediction / pop_first) ** (idx / idx_prediction_year)
+            if gdp_first > 0 and gdp_prediction > 0:
+                for idx in range(1, idx_historical_end_year):
+                    gdp_values[idx, lat_idx, lon_idx] = gdp_first * (gdp_prediction / gdp_first) ** (idx / idx_historical_end_year)
+                    pop_values[idx, lat_idx, lon_idx] = pop_first * (pop_prediction / pop_first) ** (idx / idx_historical_end_year)
 
     # Update DataArrays with modified values
     gdp_aligned.values = gdp_values
@@ -685,8 +684,18 @@ def calculate_weather_vars(all_data, config):
             )
             return result
 
+        # Compute weather variables first for all years
         tas_weather = apply_loess_to_grid(tas_data, filter_width, ref_period_slice)
         pr_weather = apply_loess_to_grid(pr_data, filter_width, ref_period_slice)
+        # now replace the historical period weather with weather that does not see the future 
+        # so that the weather in the historical period is the same for all ssp/rcp scenarios
+        idx_historical_end_year = np.where(tas_data.time == config['time_periods']['historical_end_period']['end_year'])[0][0]
+        tas_weather[:idx_historical_end_year+1, :, :] = apply_loess_to_grid(
+            tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width,ref_period_slice
+            )
+        pr_weather[:idx_historical_end_year+1, :, :] = apply_loess_to_grid(
+            tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width,ref_period_slice
+            )
 
         # Add weather variables to SSP data as DataArrays
         ssp_data['tas_weather'] = tas_weather
