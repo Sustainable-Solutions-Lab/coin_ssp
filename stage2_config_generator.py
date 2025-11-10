@@ -158,8 +158,8 @@ def generate_stage3_config(stage1_medians: Dict[str, float],
     # Copy GDP targets from template
     stage3_config['gdp_targets'] = template_config['gdp_targets']
 
-    # Enable forward simulation SSPs for actual results
-    stage3_config['ssp_scenarios']['forward_simulation_ssps'] = ['ssp245', 'ssp585']
+    # Copy forward simulation SSPs from template
+    stage3_config['ssp_scenarios']['forward_simulation_ssps'] = template_config['ssp_scenarios']['forward_simulation_ssps']
 
     return stage3_config
 
