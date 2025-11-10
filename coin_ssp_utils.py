@@ -690,12 +690,15 @@ def calculate_weather_vars(all_data, config):
         # now replace the historical period weather with weather that does not see the future
         # so that the weather in the historical period is the same for all ssp/rcp scenarios
         idx_historical_end_year = np.where(tas_data.time == config['time_periods']['historical_period']['end_year'])[0][0]
-        tas_weather[:idx_historical_end_year+1, :, :] = apply_loess_to_grid(
-            tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width,ref_period_slice
-            )
-        pr_weather[:idx_historical_end_year+1, :, :] = apply_loess_to_grid(
-            tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width,ref_period_slice
-            )
+        tas_weather_historical = apply_loess_to_grid(
+            tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width, ref_period_slice
+        )
+        pr_weather_historical = apply_loess_to_grid(
+            pr_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width, ref_period_slice
+        )
+        # Assign using .values to avoid coordinate conflicts
+        tas_weather.values[:idx_historical_end_year+1, :, :] = tas_weather_historical.values
+        pr_weather.values[:idx_historical_end_year+1, :, :] = pr_weather_historical.values
 
         # Add weather variables to SSP data as DataArrays
         ssp_data['tas_weather'] = tas_weather
