@@ -292,7 +292,7 @@ def load_gridded_data(config, case_name):
     common_years = tas_aligned.time.values
     
     # Note: by going to historical end year, the historical gdp and pop is the same regardless of which ssp we are using
-    idx_historical_end_year = np.where(common_years == config['time_periods']['historical_end_period']['end_year'])[0][0]
+    idx_historical_end_year = np.where(common_years == config['time_periods']['historical_period']['end_year'])[0][0]
 
 
     print(f"  Applying exponential growth modification for years {int(common_years[0])}-{prediction_year}")
@@ -687,9 +687,9 @@ def calculate_weather_vars(all_data, config):
         # Compute weather variables first for all years
         tas_weather = apply_loess_to_grid(tas_data, filter_width, ref_period_slice)
         pr_weather = apply_loess_to_grid(pr_data, filter_width, ref_period_slice)
-        # now replace the historical period weather with weather that does not see the future 
+        # now replace the historical period weather with weather that does not see the future
         # so that the weather in the historical period is the same for all ssp/rcp scenarios
-        idx_historical_end_year = np.where(tas_data.time == config['time_periods']['historical_end_period']['end_year'])[0][0]
+        idx_historical_end_year = np.where(tas_data.time == config['time_periods']['historical_period']['end_year'])[0][0]
         tas_weather[:idx_historical_end_year+1, :, :] = apply_loess_to_grid(
             tas_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width,ref_period_slice
             )
