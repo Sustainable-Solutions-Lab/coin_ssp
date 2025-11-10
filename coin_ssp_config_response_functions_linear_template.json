@@ -31,7 +31,7 @@
   "ssp_scenarios": {
     "_processing_step": "Data Loading & Step Selection",
     "reference_ssp": "ssp245",
-    "forward_simulation_ssps": ["ssp245", "ssp585"],
+    "forward_simulation_ssps": ["ssp126","ssp245","ssp370","ssp460", "ssp585"],
     "description": "Reference SSP used for scaling factor calibration, forward simulation SSPs for TFP and projections"
   },
 
