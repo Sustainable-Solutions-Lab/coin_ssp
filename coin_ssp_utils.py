@@ -670,7 +670,12 @@ def calculate_weather_vars(all_data, config):
 
         # Apply LOESS filtering using xr.apply_ufunc for vectorization
         def apply_loess_to_grid(data_array, filter_width, ref_slice):
-            """Apply LOESS to each grid cell in parallel"""
+            """
+            Apply LOESS to each grid cell in parallel.
+
+            Returns xarray DataArray with dimensions [time, lat, lon] to maintain
+            consistency with input dimension order.
+            """
             result = xr.apply_ufunc(
                 lambda ts: apply_loess_subtract(
                     xr.DataArray(ts, dims=['time'], coords={'time': data_array.time}),
@@ -682,12 +687,16 @@ def calculate_weather_vars(all_data, config):
                 output_core_dims=[['time']],
                 vectorize=True
             )
+            # xr.apply_ufunc with output_core_dims places time dimension LAST: [lat, lon, time]
+            # Transpose to standard order [time, lat, lon] for consistency
+            result = result.transpose('time', 'lat', 'lon')
             return result
 
         # Compute weather variables first for all years
         tas_weather = apply_loess_to_grid(tas_data, filter_width, ref_period_slice)
         pr_weather = apply_loess_to_grid(pr_data, filter_width, ref_period_slice)
-        # now replace the historical period weather with weather that does not see the future
+
+        # Now replace the historical period weather with weather that does not see the future
         # so that the weather in the historical period is the same for all ssp/rcp scenarios
         idx_historical_end_year = np.where(tas_data.time == config['time_periods']['historical_period']['end_year'])[0][0]
         tas_weather_historical = apply_loess_to_grid(
@@ -696,7 +705,9 @@ def calculate_weather_vars(all_data, config):
         pr_weather_historical = apply_loess_to_grid(
             pr_data.isel(time=slice(0, idx_historical_end_year+1)), filter_width, ref_period_slice
         )
+
         # Assign using .values to avoid coordinate conflicts
+        # Now both arrays have [time, lat, lon] order, so slice first dimension
         tas_weather.values[:idx_historical_end_year+1, :, :] = tas_weather_historical.values
         pr_weather.values[:idx_historical_end_year+1, :, :] = pr_weather_historical.values
 
