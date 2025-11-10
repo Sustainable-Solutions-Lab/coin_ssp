@@ -290,10 +290,10 @@ def load_gridded_data(config, case_name):
 
     # Apply exponential growth modification for GDP and population before prediction year
     common_years = tas_aligned.time.values
-    
+
     # Note: by going to historical end year, the historical gdp and pop is the same regardless of which ssp we are using
     idx_historical_end_year = np.where(common_years == config['time_periods']['historical_period']['end_year'])[0][0]
-
+    idx_prediction_year = np.where(common_years == prediction_year)[0][0]
 
     print(f"  Applying exponential growth modification for years {int(common_years[0])}-{prediction_year}")
 
